@@ -1,30 +1,94 @@
 ---
-title: "AmonTobin_Deadmau5_portfolio"
+title: "The music of Amon Tobin"
 author: "Lucas de Visser"
 date: "09/02/2021"
 output: html_document
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+# Introduction
+The corpus I'm going to be inspecting is a collection 10 of albums from two electronic artists (Deadmau5 and Amon Tobin). I chose these artists and these albums because the artists both produce similar but varying music, ranging from dreamy ambient music (Fear in a Handful of Dust) to very intense beats (Fight! Fight! Fight!). Interesting comparisons could be made in this corpus. You could compare the differences between the two artists, between albums, or you could compare earlier albums to recent albums from the same artist since I purposely picked albums from as early as 1997 (which is relatively early for electronic music). I expect to find a lot of differences between the ambient albums and the heavier electronic albums, and I included very similar albums to see if they could be differentiated. A strength of the corpus is that these albums cover the range of the artists pretty well so both artists are well represented. A weakness might be that certain tracks are really typical of one artist so obvious differences are present compared to the other artist. For instance a typical Deadmau5 tracks would be ‘October’ or ‘The 16th Hour’ because they both use a steady  kick drum throughout the whole track as well as polyrhythmic melodies. Typical tracks for Amon Tobin might be ‘Clear for Blue’ or ‘Velvet Owl’, because of the lack of drums and the long dreamy chords and melodies. Atypical tracks for this corpus are ‘New York Editor’ and ‘Cat Thruster’ for their jazzy drums and basslines.
+
+Full albums used in the corpus:  
+Amon Tobin - Bricolage (1997)  
+Amon Tobin - ISAM (2011)  
+Amon Tobin - Fear in a Handful of Dust (2019)  
+Amon Tobin - Long Stories (2019)  
+Amon Tobin - Fight! Fight! Fight! (2020)  
+Deadmau5 - For Lack Of A Better Name (2009)  
+Deadmau5 - 4x4=12 (2010)  
+Deadmau5 - >Album Title Goes Here< (2012)  
+Deadmau5 - W:/2016ALBUM/ (2016)  
+Deadmau5 - where's the drop? (2018)
+
+```{r}
+library(tidyverse)
+library(spotifyr)
 ```
 
-## R Markdown
+```{r}
+amon_tobin <- get_artist_audio_features("3mvkWMe6swnknwscwvGCHO")
+bricolage <- amon_tobin %>% filter(album_name == "Bricolage")
+permutation <- amon_tobin %>% filter(album_name == "Permutation")
+supermodified <- amon_tobin %>% filter(album_name == "Supermodified")
+out_from_out_where <- amon_tobin %>% filter(album_name == "Out from Out Where")
+chaos_theory <- amon_tobin %>% filter(album_name == "Chaos Theory")
+foley_room <- amon_tobin %>% filter(album_name == "Foley Room")
+isam <- amon_tobin %>% filter(album_name == "ISAM")
+sydney <- amon_tobin %>% filter(album_name == "Electronic Music for the Sydney Opera House")
+handful_of_dust <- amon_tobin %>% filter(album_name == "Fear in a Handful of Dust")
+time_to_run <- amon_tobin %>% filter(album_name == "Time To Run")
+long_stories <- amon_tobin %>% filter(album_name == "Long Stories")
+fight <- amon_tobin %>% filter(album_name == "Fight! Fight! Fight!")
+world_as_we_know <- amon_tobin %>% filter(album_name == "The World As We Know It")
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
+corpus <- amon_tobin %>%
+    filter(album_name != "Dark Jovian") %>%
+    filter(album_name != "Chaos Theory (Remixed) [The Soundtrack to Splinter Cell 3D]") %>%
+    filter(album_name != "inFAMOUS (Original Game Soundtrack)") %>%
+    filter(album_name != "Verbal Remixes & Collaborations")
 ```
 
-## Including Plots
+```{r}
+ggplot(corpus, aes(x=acousticness,y=energy, color=valence)) + geom_point(alpha=0.5) + geom_smooth()
+```
+```{r}
+mean_bricolage <- mean(bricolage$energy)
+mean_permutation <- mean(permutation$energy)
+mean_supermodified <- mean(supermodified$energy)
+mean_out_from_out_where <- mean(out_from_out_where$energy)
+mean_chaos_theory <- mean(chaos_theory$energy)
+mean_foley_room <- mean(foley_room$energy)
+mean_isam <- mean(isam$energy)
+mean_sydney <- mean(sydney$energy)
+mean_handful_of_dust <- mean(handful_of_dust$energy)
+mean_time_to_run <- mean(time_to_run$energy)
+mean_long_stories <- mean(long_stories$energy)
+mean_fight <- mean(fight$energy)
+mean_world_as_we_know <- mean(world_as_we_know$energy)
 
-You can also embed plots, for example:
+corpus <- corpus %>%
+  group_by(album_name) %>%
+  mutate(mean_energy = mean(energy)) %>%
+  mutate(mean_valence = mean(valence)) %>%
+  mutate(mean_danceability = mean(danceability)) %>%
+  mutate(mean_acousticness = mean(acousticness))
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+
+ggplot(corpus, aes(x=mean_valence, y=mean_energy)) + geom_text(aes(label=album_name, color=mean_danceability), size=3) + theme_classic()
+
+
+```
+```{r}
+ggplot(corpus, aes(x=album_name, y=danceability)) + geom_boxplot() + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
+```
+```{r}
+corpus <- corpus %>%
+  group_by(track_number) %>%
+  mutate(danceability_by_track_number = mean(energy))
+
+ggplot(corpus, aes(x=track_number, y=danceability_by_track_number)) + geom_line()
+
+ggplot(corpus, aes(x=track_number,group=track_number,y=liveness)) + geom_boxplot()
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
