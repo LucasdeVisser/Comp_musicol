@@ -23,12 +23,12 @@ Long Stories (2019)
 Fight! Fight! Fight! (2020)  
 The World As We Know It (2020)  
 
-```{r}
+```{r, echo=FALSE, results='hide', warning=FALSE, message=FALSE}
 library(tidyverse)
 library(spotifyr)
 ```
 
-```{r}
+```{r, echo=FALSE, results='hide', warning=FALSE, message=FALSE}
 amon_tobin <- get_artist_audio_features("3mvkWMe6swnknwscwvGCHO")
 bricolage <- amon_tobin %>% filter(album_name == "Bricolage")
 permutation <- amon_tobin %>% filter(album_name == "Permutation")
@@ -51,10 +51,16 @@ corpus <- amon_tobin %>%
     filter(album_name != "Verbal Remixes & Collaborations")
 ```
 
-```{r}
+# Graphs
+
+```{r, echo=FALSE, results='hide', warning=FALSE, message=FALSE}
 ggplot(corpus, aes(x=acousticness,y=energy, color=valence)) + geom_point(alpha=0.5) + geom_smooth() +ggtitle("Acousticness and Energy distribution of all tracks")
 ```
-```{r}
+
+An interesting find here is that the more acoustic tracks tend to be less energetic than the less acoustic tracks according to Spotify, which is odd since acoustic albums like *Time To Run* feel much more energetic than mainly electronic albums like *Fear in a Handful of Dust*. Valence seems to be about evenly spread, but the few tracks with the lowest valence tend to have very low acousticness.
+
+
+```{r, echo=FALSE, results='hide', warning=FALSE, message=FALSE}
 mean_bricolage <- mean(bricolage$energy)
 mean_permutation <- mean(permutation$energy)
 mean_supermodified <- mean(supermodified$energy)
@@ -81,10 +87,15 @@ ggplot(corpus, aes(x=mean_valence, y=mean_energy)) + geom_text(aes(label=album_n
 
 
 ```
-```{r}
+
+If you look at the mean valence and energy values of all albums, you can see a relationship between valence and energy between albums. The higher the valence, the higher the energy. It also looks like the more danceable albums are in the top right, high energy and high valence.
+
+## Ignore the graphs below
+
+```{r, echo=FALSE, results='hide', warning=FALSE}
 ggplot(corpus, aes(x=album_name, y=danceability)) + geom_boxplot() + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
 ```
-```{r}
+```{r, echo=FALSE}
 corpus <- corpus %>%
   group_by(track_number) %>%
   mutate(danceability_by_track_number = mean(energy))
