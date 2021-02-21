@@ -1,13 +1,16 @@
 ---
-title: "The music of Amon Tobin"
+title: "Amon Tobin: similarities and differences in music over the years"
 author: "Lucas de Visser"
 date: "09/02/2021"
-output: html_document
+output: 
+    flexdashboard::flex_dashboard:
+      storyboard: true
 ---
 
-# Introduction
+### Introduction and pre-analysis of the corpus
 The corpus I'm going to be inspecting is a collection of all albums from the electronic artist Amon Tobin. I chose this artist because he has produced a lot of different albums, ranging from dreamy ambient music (Fear in a Handful of Dust) to very intense beats (Fight! Fight! Fight!). There are interesting comparisons to be made in this corpus. Because his earliest album is from 1997, which is a relatively early year for electronic music, the change in music over time is an obvious comparison to make. Because the corpus consists of only albums, it is also interesting to see how and if albums differ, especially very similar albums like *Fear in a Handful of Dust* and  *Long Stories*. I expect to find a lot of differences between the ambient albums and the heavier electronic albums, and I expect certain albums to be very difficult to differentiate. A strength of the corpus is that most of the music of Amon Tobin is represented in these albums. A weakness might be that certain albums might be too similar to find any meaningful differences. If expect *Fear in a Handful of Dust* and  *Long Stories* to be too similar because they both use long dreamy chords and melodies without using drums, which might be difficult for Spotify to differentiate. An atypical track for this corpus might be ‘New York Editor’, for its jazzy drums and basslines.
 
+***
 Full albums used in the corpus:  
 Bricolage (1997)  
 Permutation (1998)  
@@ -26,10 +29,13 @@ The World As We Know It (2020)
 ```{r, echo=FALSE, results='hide', warning=FALSE, message=FALSE}
 library(tidyverse)
 library(spotifyr)
+library(compmus)
+library(ggplot2)
+library(plotly)
 ```
 
 ```{r, echo=FALSE, results='hide', warning=FALSE, message=FALSE}
-amon_tobin <- get_artist_audio_features("3mvkWMe6swnknwscwvGCHO")
+amon_tobin <- get_artist_audio_features("3mvkWMe6swnknwscwvGCHO", include_groups = "album", dedupe_albums = TRUE)
 bricolage <- amon_tobin %>% filter(album_name == "Bricolage")
 permutation <- amon_tobin %>% filter(album_name == "Permutation")
 supermodified <- amon_tobin %>% filter(album_name == "Supermodified")
@@ -51,14 +57,73 @@ corpus <- amon_tobin %>%
     filter(album_name != "Verbal Remixes & Collaborations")
 ```
 
-# Graphs
+### Are there even large differences in Amon Tobin's tracks?
 
 ```{r, echo=FALSE, results='hide', warning=FALSE, message=FALSE}
-ggplot(corpus, aes(x=acousticness,y=energy, color=valence)) + geom_point(alpha=0.5) + geom_smooth() +ggtitle("Acousticness and Energy distribution of all tracks")
+plot1 <- ggplot(corpus, aes(x=acousticness,y=energy, color=valence, label=track_name)) + geom_point(alpha=0.5) + geom_smooth() +ggtitle("Acousticness and Energy distribution of all tracks")
+```
+```{r}
+ggplotly(plot1)
 ```
 
-An interesting find here is that the more acoustic tracks tend to be less energetic than the less acoustic tracks according to Spotify, which is odd since acoustic albums like *Time To Run* feel much more energetic than mainly electronic albums like *Fear in a Handful of Dust*. Valence seems to be about evenly spread, but the few tracks with the lowest valence tend to have very low acousticness.
 
+***
+Here we see a lot of Amon Tobin's tracks are high in energy and low in acousticness.
+An interesting find though is that the more acoustic tracks tend to be less energetic than the less acoustic tracks according to Spotify, which is odd since acoustic albums like *Time To Run* feel much more energetic than mainly electronic albums like *Fear in a Handful of Dust*. Valence seems to be about evenly spread, but the few tracks with the lowest valence tend to have very low acousticness.
+
+### A spectogram analysis of the outlier track "Big Furry Head"
+
+```{r}
+big_furry_head <-
+  get_tidy_audio_analysis("1NOIIbDFL2xRlUxZQ91V8W") %>%
+  select(segments) %>%
+  unnest(segments) %>%
+  select(start, duration, pitches)
+
+big_furry_head %>%
+  mutate(pitches = map(pitches, compmus_normalise, "euclidean")) %>%
+  compmus_gather_chroma() %>% 
+  ggplot(
+    aes(
+      x = start + duration / 2,
+      width = duration,
+      y = pitch_class,
+      fill = value
+    )
+  ) +
+  geom_tile() +
+  labs(x = "Time (s)", y = NULL, fill = "Magnitude") +
+  theme_minimal() +
+  scale_fill_viridis_c() + labs(title="Spectogram of 'Big Furry Head'")
+```
+
+***
+Here you see the spectogram of the track 'Big Furry Head'. This track was an outlier because it has high energy while being somewhere in the middle on acousticness (see the previous page). The spectogram does not immediately show any inconsistensies. It is interesting that you can cleary see that the majority of the track involves percussion except for the beginning and end, because percussive instruments produce noise which consists of many different frequencies. The next page shows a closer look to see the difference in bits with percussion and without.
+
+###  The first 50 seconds of 'Big Furry Head' shows the difference percussion makes
+
+```{r}
+big_furry_head %>%
+  mutate(pitches = map(pitches, compmus_normalise, "euclidean")) %>%
+  compmus_gather_chroma() %>% 
+  ggplot(
+    aes(
+      x = start + duration / 2,
+      width = duration,
+      y = pitch_class,
+      fill = value
+    )
+  ) +
+  geom_tile() +
+  labs(x = "Time (s)", y = NULL, fill = "Magnitude") +
+  theme_minimal() +
+  scale_fill_viridis_c() + xlim(0, 50) + labs(title="First 50 seconds of 'Big Furry Head'")
+```
+
+***
+The first half of this clip shows very distinct notes in the spectogram. Interesting is how it interprets a portamento from B to Bb around the 4 second mark. At the 13 second mark new layers of instruments are slowly introduced, and at around 27 seconds in you can clearly see the point where the drums start playing. From there on the spectogram becomes very chaotic, as expected.
+
+### Do his albums differ in terms of high level Spotify features?
 
 ```{r, echo=FALSE, results='hide', warning=FALSE, message=FALSE}
 mean_bricolage <- mean(bricolage$energy)
@@ -83,14 +148,18 @@ corpus <- corpus %>%
   mutate(mean_acousticness = mean(acousticness))
 
 
-ggplot(corpus, aes(x=mean_valence, y=mean_energy)) + geom_text(aes(label=album_name, color=mean_danceability), size=3) + theme_classic() + ggtitle("Mean Valence and Energy of all albums")
-
-
+plot <- ggplot(corpus, aes(x=mean_valence, y=mean_energy)) + geom_text(aes(label=album_name, color=mean_danceability), size=3) + theme_classic() + ggtitle("Mean Valence and Energy of all albums") +xlim(-0.2, 0.7) +ylim(0.33, 0.85)
 ```
 
-If you look at the mean valence and energy values of all albums, you can see a relationship between valence and energy between albums. The higher the valence, the higher the energy. It also looks like the more danceable albums are in the top right, high energy and high valence.
+```{r}
+ggplotly(plot)
+```
 
-## Ignore the graphs below
+
+***
+Here you can see there are clear differences between albums. There is also an interesting relationship between energy, valence and danceability, namely albums with high valence tend to have high energy as well as high danceability. Another thing to note is that Amon Tobin's albums are relatively low in valence, while energy seems to vary much more. Mouse over the plot to see the specific values.
+
+### Ignore the graphs below
 
 ```{r, echo=FALSE, results='hide', warning=FALSE}
 ggplot(corpus, aes(x=album_name, y=danceability)) + geom_boxplot() + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
