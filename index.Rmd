@@ -7,6 +7,143 @@ output:
       storyboard: true
 ---
 
+```{r, echo=FALSE, results='hide', warning=FALSE, message=FALSE}
+library(tidyverse)
+library(spotifyr)
+library(compmus)
+library(ggplot2)
+library(plotly)
+```
+
+### New graphs
+
+```{r}
+toys <-
+  get_tidy_audio_analysis("6DkRA7SFuraU8wlChIDt9c") %>% # Change URI.
+  compmus_align(sections, segments) %>%                     # Change `bars`
+  select(sections) %>%                                      #   in all three
+  unnest(sections) %>%                                      #   of these lines.
+  mutate(
+    pitches =
+      map(segments,
+        compmus_summarise, pitches,
+        method = "rms", norm = "euclidean"              # Change summary & norm.
+      )
+  ) %>%
+  mutate(
+    timbre =
+      map(segments,
+        compmus_summarise, timbre,
+        method = "rms", norm = "euclidean"              # Change summary & norm.
+      )
+  )
+
+toys %>%
+  compmus_gather_timbre() %>%
+  ggplot(
+    aes(
+      x = start + duration / 2,
+      width = duration,
+      y = basis,
+      fill = value
+    )
+  ) +
+  geom_tile() +
+  labs(x = "Time (s)", y = NULL, fill = "Magnitude") +
+  scale_fill_viridis_c() +                              
+  theme_classic() + labs(title="Cepstogram of 'Toys' based on sections")
+```
+
+
+### New graphs
+
+```{r}
+toys <-
+  get_tidy_audio_analysis("6DkRA7SFuraU8wlChIDt9c") %>% # Change URI.
+  compmus_align(beats, segments) %>%                     # Change `bars`
+  select(beats) %>%                                      #   in all three
+  unnest(beats) %>%                                      #   of these lines.
+  mutate(
+    pitches =
+      map(segments,
+        compmus_summarise, pitches,
+        method = "rms", norm = "euclidean"              # Change summary & norm.
+      )
+  ) %>%
+  mutate(
+    timbre =
+      map(segments,
+        compmus_summarise, timbre,
+        method = "rms", norm = "euclidean"              # Change summary & norm.
+      )
+  )
+
+toys %>%
+  compmus_gather_timbre() %>%
+  ggplot(
+    aes(
+      x = start + duration / 2,
+      width = duration,
+      y = basis,
+      fill = value
+    )
+  ) +
+  geom_tile() +
+  labs(x = "Time (s)", y = NULL, fill = "Magnitude") +
+  scale_fill_viridis_c() +                              
+  theme_classic() + labs(title="Cepstogram of 'Toys' based on beats")
+```
+
+
+
+***
+These are cepstograms of a typical Amon Tobin track called "Toys". As you can see in the cepstograms, which is also very audible in the track, almost exactly halfway the track it changes in a big way. You can see that because the first half the third coefficient is most present, while in the second half the second coefficient is mostly present.
+
+### New graphs
+
+```{r}
+reanimator <-
+  get_tidy_audio_analysis("3IIRFqcAthIwk670PebTgZ") %>% # Change URI.
+  compmus_align(bars, segments) %>%                     # Change `bars`
+  select(bars) %>%                                      #   in all three
+  unnest(bars) %>%                                      #   of these lines.
+  mutate(
+    pitches =
+      map(segments,
+        compmus_summarise, pitches,
+        method = "rms", norm = "euclidean"              # Change summary & norm.
+      )
+  ) %>%
+  mutate(
+    timbre =
+      map(segments,
+        compmus_summarise, timbre,
+        method = "rms", norm = "euclidean"              # Change summary & norm.
+      )
+  )
+
+reanimator %>%
+  compmus_self_similarity(timbre, "cosine") %>% 
+  ggplot(
+    aes(
+      x = xstart + xduration / 2,
+      width = xduration,
+      y = ystart + yduration / 2,
+      height = yduration,
+      fill = d
+    )
+  ) +
+  geom_tile() +
+  coord_fixed() +
+  scale_fill_viridis_c(guide = "none") +
+  theme_classic() +
+  labs(x = "", y = "", title="SSM based on timbre of the track 'Reanimator'")
+
+```
+
+***
+This is a self-similarity matrix for timbre of the track 'Reanimator'. There are dark patches here and there which indicate similar timbre throughout the track. Interesting points are the yellow line at around 185 seconds which indicates the moment the heavy drums kick in and the cluster of yellow lines at around 250 seconds which indicate a transitional moment in the track.
+
 ### Introduction and pre-analysis of the corpus
 The corpus I'm going to be inspecting is a collection of all albums from the electronic artist Amon Tobin. I chose this artist because he has produced a lot of different albums, ranging from dreamy ambient music (Fear in a Handful of Dust) to very intense beats (Fight! Fight! Fight!). There are interesting comparisons to be made in this corpus. Because his earliest album is from 1997, which is a relatively early year for electronic music, the change in music over time is an obvious comparison to make. Because the corpus consists of only albums, it is also interesting to see how and if albums differ, especially very similar albums like *Fear in a Handful of Dust* and  *Long Stories*. I expect to find a lot of differences between the ambient albums and the heavier electronic albums, and I expect certain albums to be very difficult to differentiate. A strength of the corpus is that most of the music of Amon Tobin is represented in these albums. A weakness might be that certain albums might be too similar to find any meaningful differences. If expect *Fear in a Handful of Dust* and  *Long Stories* to be too similar because they both use long dreamy chords and melodies without using drums, which might be difficult for Spotify to differentiate. An atypical track for this corpus might be ‘New York Editor’, for its jazzy drums and basslines.
 
@@ -26,13 +163,7 @@ Long Stories (2019)
 Fight! Fight! Fight! (2020)  
 The World As We Know It (2020)  
 
-```{r, echo=FALSE, results='hide', warning=FALSE, message=FALSE}
-library(tidyverse)
-library(spotifyr)
-library(compmus)
-library(ggplot2)
-library(plotly)
-```
+
 
 ```{r, echo=FALSE, results='hide', warning=FALSE, message=FALSE}
 amon_tobin <- get_artist_audio_features("3mvkWMe6swnknwscwvGCHO", include_groups = "album", dedupe_albums = TRUE)
@@ -158,6 +289,7 @@ ggplotly(plot)
 
 ***
 Here you can see there are clear differences between albums. There is also an interesting relationship between energy, valence and danceability, namely albums with high valence tend to have high energy as well as high danceability. Another thing to note is that Amon Tobin's albums are relatively low in valence, while energy seems to vary much more. Mouse over the plot to see the specific values.
+
 
 ### Ignore the graphs below
 
