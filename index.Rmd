@@ -13,9 +13,345 @@ library(spotifyr)
 library(compmus)
 library(ggplot2)
 library(plotly)
+library(dplyr)
 ```
 
-### New graphs
+```{r, echo=FALSE, results='hide', warning=FALSE, message=FALSE}
+amon_tobin <- get_artist_audio_features("3mvkWMe6swnknwscwvGCHO", include_groups = "album", dedupe_albums = TRUE)
+bricolage <- amon_tobin %>% filter(album_name == "Bricolage")
+permutation <- amon_tobin %>% filter(album_name == "Permutation")
+supermodified <- amon_tobin %>% filter(album_name == "Supermodified")
+out_from_out_where <- amon_tobin %>% filter(album_name == "Out from Out Where")
+chaos_theory <- amon_tobin %>% filter(album_name == "Chaos Theory")
+foley_room <- amon_tobin %>% filter(album_name == "Foley Room")
+isam <- amon_tobin %>% filter(album_name == "ISAM")
+sydney <- amon_tobin %>% filter(album_name == "Electronic Music for the Sydney Opera House")
+handful_of_dust <- amon_tobin %>% filter(album_name == "Fear in a Handful of Dust")
+time_to_run <- amon_tobin %>% filter(album_name == "Time To Run")
+long_stories <- amon_tobin %>% filter(album_name == "Long Stories")
+fight <- amon_tobin %>% filter(album_name == "Fight! Fight! Fight!")
+world_as_we_know <- amon_tobin %>% filter(album_name == "The World As We Know It")
+
+corpus <- amon_tobin %>%
+    filter(album_name != "Dark Jovian") %>%
+    filter(album_name != "Chaos Theory (Remixed) [The Soundtrack to Splinter Cell 3D]") %>%
+    filter(album_name != "inFAMOUS (Original Game Soundtrack)") %>%
+    filter(album_name != "Verbal Remixes & Collaborations")
+
+corpus <- mutate(corpus, track_name = tolower(track_name))
+corpus <- distinct(corpus, track_name, .keep_all= TRUE)
+```
+
+### *NEW* tempo and loudness of albums in chronological order
+
+```{r}
+corpus %>%
+  mutate(album_name = factor(album_name, levels=c("Bricolage", "Permutation", "Supermodified", "Out From Out Where", "Chaos Theory", "Foley Room", "ISAM", "Electronic Music for the Sydney Opera House", "Long Stories", "Time To Run", "Fear in a Handful of Dust", "The World As We Know It", "Fight! Fight! Fight!"))) %>%
+  group_by(album_name) %>%
+  mutate(mean_loudness = mean(loudness)) %>%
+  ggplot(aes(x=album_name, y=tempo, fill=mean_loudness)) + geom_boxplot() + theme_classic() + theme(axis.text.x = element_text(angle = 45, hjust = 1)) + labs(x="")  + scale_fill_gradient(low = "#ffdbdb", high = "#ff6363")
+```
+
+***
+Here you can see the tempo and loudness of all the albums in chronological order. If you look at tempo you see a clear progression in albums from 1997 till 2020, you can sort of draw a curve for tempo in time. It is also interesting that later albums differ much more in loudness than earlier albums. The deviation of tempo (indicated by the boxes) is overall also much higher in later albums. This indicated a clear change in music.
+
+### *NEW* Lets look at the harmonic progression over time
+
+```{r, echo=FALSE, results='hide', warning=FALSE}
+corpus <- mutate(corpus, after_2007 = album_release_year > 2007)
+
+corpus %>%
+  ggplot(aes(x=key_name, fill=mode_name)) + geom_bar() + theme_classic() + facet_wrap( ~after_2007, labeller=label_both)
+
+```
+
+***
+I want to look at how Amon Tobin's music changed harmonically over the years. To avoid cluttering I've split all his tracks around the midpoint of his career, 2007. In this graph you can see the distribution of keys he used in his tracks, as well as the distribution of major and minor tracks. The most interesting find in this graph is the key C#. After 2007 there are more tracks produced in C# minor, but significantly less in C# major. After investigating further, I noticed most of the tracks in C# minor before 2007 were from the album 'Supermodified'. In the next page I take a closer look at one of those tracks for any interesting harmonic information.
+
+
+### *NEW* Taking a closer look at the harmonics of multiple C# minor tracks from before 2000
+
+#### Keygram of the track 'Slowly'
+
+```{r}
+circshift <- function(v, n) {
+  if (n == 0) v else c(tail(v, n), head(v, -n))
+}
+
+#      C     C#    D     Eb    E     F     F#    G     Ab    A     Bb    B
+major_chord <-
+  c(   1,    0,    0,    0,    1,    0,    0,    1,    0,    0,    0,    0)
+minor_chord <-
+  c(   1,    0,    0,    1,    0,    0,    0,    1,    0,    0,    0,    0)
+seventh_chord <-
+  c(   1,    0,    0,    0,    1,    0,    0,    1,    0,    0,    1,    0)
+
+major_key <-
+  c(6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88)
+minor_key <-
+  c(6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17)
+
+chord_templates <-
+  tribble(
+    ~name, ~template,
+    "Gb:7", circshift(seventh_chord, 6),
+    "Gb:maj", circshift(major_chord, 6),
+    "Bb:min", circshift(minor_chord, 10),
+    "Db:maj", circshift(major_chord, 1),
+    "F:min", circshift(minor_chord, 5),
+    "Ab:7", circshift(seventh_chord, 8),
+    "Ab:maj", circshift(major_chord, 8),
+    "C:min", circshift(minor_chord, 0),
+    "Eb:7", circshift(seventh_chord, 3),
+    "Eb:maj", circshift(major_chord, 3),
+    "G:min", circshift(minor_chord, 7),
+    "Bb:7", circshift(seventh_chord, 10),
+    "Bb:maj", circshift(major_chord, 10),
+    "D:min", circshift(minor_chord, 2),
+    "F:7", circshift(seventh_chord, 5),
+    "F:maj", circshift(major_chord, 5),
+    "A:min", circshift(minor_chord, 9),
+    "C:7", circshift(seventh_chord, 0),
+    "C:maj", circshift(major_chord, 0),
+    "E:min", circshift(minor_chord, 4),
+    "G:7", circshift(seventh_chord, 7),
+    "G:maj", circshift(major_chord, 7),
+    "B:min", circshift(minor_chord, 11),
+    "D:7", circshift(seventh_chord, 2),
+    "D:maj", circshift(major_chord, 2),
+    "F#:min", circshift(minor_chord, 6),
+    "A:7", circshift(seventh_chord, 9),
+    "A:maj", circshift(major_chord, 9),
+    "C#:min", circshift(minor_chord, 1),
+    "E:7", circshift(seventh_chord, 4),
+    "E:maj", circshift(major_chord, 4),
+    "G#:min", circshift(minor_chord, 8),
+    "B:7", circshift(seventh_chord, 11),
+    "B:maj", circshift(major_chord, 11),
+    "D#:min", circshift(minor_chord, 3)
+  )
+
+key_templates <-
+  tribble(
+    ~name, ~template,
+    "Gb:maj", circshift(major_key, 6),
+    "Bb:min", circshift(minor_key, 10),
+    "Db:maj", circshift(major_key, 1),
+    "F:min", circshift(minor_key, 5),
+    "Ab:maj", circshift(major_key, 8),
+    "C:min", circshift(minor_key, 0),
+    "Eb:maj", circshift(major_key, 3),
+    "G:min", circshift(minor_key, 7),
+    "Bb:maj", circshift(major_key, 10),
+    "D:min", circshift(minor_key, 2),
+    "F:maj", circshift(major_key, 5),
+    "A:min", circshift(minor_key, 9),
+    "C:maj", circshift(major_key, 0),
+    "E:min", circshift(minor_key, 4),
+    "G:maj", circshift(major_key, 7),
+    "B:min", circshift(minor_key, 11),
+    "D:maj", circshift(major_key, 2),
+    "F#:min", circshift(minor_key, 6),
+    "A:maj", circshift(major_key, 9),
+    "C#:min", circshift(minor_key, 1),
+    "E:maj", circshift(major_key, 4),
+    "G#:min", circshift(minor_key, 8),
+    "B:maj", circshift(major_key, 11),
+    "D#:min", circshift(minor_key, 3)
+  )
+```
+```{r}
+slowly <-
+  get_tidy_audio_analysis("15J6PrzKaLtvw0dBr9sq72") %>%
+  compmus_align(sections, segments) %>%
+  select(sections) %>%
+  unnest(sections) %>%
+  mutate(
+    pitches =
+      map(segments,
+        compmus_summarise, pitches,
+        method = "mean", norm = "manhattan"
+      )
+  )
+
+slowly %>% 
+  compmus_match_pitch_template(
+    key_templates,         # Change to chord_templates if descired
+    method = "euclidean",  # Try different distance metrics
+    norm = "manhattan"     # Try different norms
+  ) %>%
+  ggplot(
+    aes(x = start + duration / 2, width = duration, y = name, fill = d)
+  ) +
+  geom_tile() +
+  scale_x_continuous(breaks=round(seq(0, 337, by = 50),1)) +
+  scale_fill_viridis_c(guide = "none") +
+  theme_minimal() +
+  labs(x = "Time (s)", y = "Key", title="")
+```
+
+#### Keygram of the track 'Get Your Snack On'
+
+```{r}
+snack <-
+  get_tidy_audio_analysis("14BIjb7JQJzUPBE7PxLV25") %>%
+  compmus_align(sections, segments) %>%
+  select(sections) %>%
+  unnest(sections) %>%
+  mutate(
+    pitches =
+      map(segments,
+        compmus_summarise, pitches,
+        method = "mean", norm = "manhattan"
+      )
+  )
+
+snack %>% 
+  compmus_match_pitch_template(
+    key_templates,         # Change to chord_templates if descired
+    method = "euclidean",  # Try different distance metrics
+    norm = "manhattan"     # Try different norms
+  ) %>%
+  ggplot(
+    aes(x = start + duration / 2, width = duration, y = name, fill = d)
+  ) +
+  geom_tile() +
+  scale_x_continuous(breaks=round(seq(0, 337, by = 50),1)) +
+  scale_fill_viridis_c(guide = "none") +
+  theme_minimal() +
+  labs(x = "Time (s)", y = "Key")
+```
+
+
+***
+These are two tracks from before 2007 which Spotify labeled as C# minor. As you can see, while the harmonic structure of both tracks are very much visible looking at vertical lines, the keygrams do not settle on one key for both tracks. If you listen to the tracks, you can hear that they do not rely on harmony too much. You can make out melody and a chord here and there, but rhythm takes center stage in these tracks. I do not know why Spotify labels both these tracks (and other aharmonic tracks from the same album) as being in C# minor. I would even say that 'Slowly' is more suited in B major, as throughout the track you constantly hear an F# followed by a B chord. That corresponds to V-I if the track is in B major, which makes it very musically suitable for B major.
+
+### Introduction and pre-analysis of the corpus
+The corpus I'm going to be inspecting is a collection of all albums from the electronic artist Amon Tobin. I chose this artist because he has produced a lot of different albums, ranging from dreamy ambient music (Fear in a Handful of Dust) to very intense beats (Fight! Fight! Fight!). There are interesting comparisons to be made in this corpus. Because his earliest album is from 1997, which is a relatively early year for electronic music, the change in music over time is an obvious comparison to make. Because the corpus consists of only albums, it is also interesting to see how and if albums differ, especially very similar albums like *Fear in a Handful of Dust* and  *Long Stories*. I expect to find a lot of differences between the ambient albums and the heavier electronic albums, and I expect certain albums to be very difficult to differentiate. A strength of the corpus is that most of the music of Amon Tobin is represented in these albums. A weakness might be that certain albums might be too similar to find any meaningful differences. If expect *Fear in a Handful of Dust* and  *Long Stories* to be too similar because they both use long dreamy chords and melodies without using drums, which might be difficult for Spotify to differentiate. An atypical track for this corpus might be ‘New York Editor’, for its jazzy drums and basslines.
+
+***
+Full albums used in the corpus:  
+Bricolage (1997)  
+Permutation (1998)  
+Supermodified (2000)  
+Out From Out Where (2002)  
+Chaos Theory (2005)  
+Foley Room (2007)  
+ISAM (2011)  
+Electronic Music for the Sydney Opera House (2017)  
+Fear in a Handful of Dust (2019)  
+Time To Run (2019)  
+Long Stories (2019)  
+Fight! Fight! Fight! (2020)  
+The World As We Know It (2020)  
+
+
+### Are there even large differences in Amon Tobin's tracks?
+
+```{r, echo=FALSE, results='hide', warning=FALSE, message=FALSE}
+plot1 <- ggplot(corpus, aes(x=acousticness,y=energy, color=valence, label=track_name)) + geom_point(alpha=0.5) + geom_smooth() +ggtitle("Acousticness and Energy distribution of all tracks")
+```
+```{r}
+ggplotly(plot1)
+```
+
+
+***
+Here we see a lot of Amon Tobin's tracks are high in energy and low in acousticness.
+An interesting find though is that the more acoustic tracks tend to be less energetic than the less acoustic tracks according to Spotify, which is odd since acoustic albums like *Time To Run* feel much more energetic than mainly electronic albums like *Fear in a Handful of Dust*. Valence seems to be about evenly spread, but the few tracks with the lowest valence tend to have very low acousticness.
+
+### A spectogram analysis of the outlier track "Big Furry Head"
+
+#### A spectogram of the whole track
+
+```{r}
+big_furry_head <-
+  get_tidy_audio_analysis("1NOIIbDFL2xRlUxZQ91V8W") %>%
+  select(segments) %>%
+  unnest(segments) %>%
+  select(start, duration, pitches)
+
+big_furry_head %>%
+  mutate(pitches = map(pitches, compmus_normalise, "euclidean")) %>%
+  compmus_gather_chroma() %>% 
+  ggplot(
+    aes(
+      x = start + duration / 2,
+      width = duration,
+      y = pitch_class,
+      fill = value
+    )
+  ) +
+  geom_tile() +
+  labs(x = "Time (s)", y = NULL, fill = "Magnitude") +
+  theme_minimal() +
+  scale_fill_viridis_c() + labs(title="Spectogram of 'Big Furry Head'")
+```
+
+####  The first 50 seconds of 'Big Furry Head' shows the difference percussion makes
+
+```{r}
+big_furry_head %>%
+  mutate(pitches = map(pitches, compmus_normalise, "euclidean")) %>%
+  compmus_gather_chroma() %>% 
+  ggplot(
+    aes(
+      x = start + duration / 2,
+      width = duration,
+      y = pitch_class,
+      fill = value
+    )
+  ) +
+  geom_tile() +
+  labs(x = "Time (s)", y = NULL, fill = "Magnitude") +
+  theme_minimal() +
+  scale_fill_viridis_c() + xlim(0, 50) + labs(title="First 50 seconds of 'Big Furry Head'")
+```
+
+***
+Here you see the spectogram of the track 'Big Furry Head'. This track was an outlier because it has high energy while being somewhere in the middle on acousticness (see the previous page). The spectogram does not immediately show any inconsistensies. It is interesting that you can cleary see that the majority of the track involves percussion except for the beginning and end, because percussive instruments produce noise which consists of many different frequencies. The next page shows a closer look to see the difference in bits with percussion and without.
+
+The first half of this clip shows very distinct notes in the spectogram. Interesting is how it interprets a portamento from B to Bb around the 4 second mark. At the 13 second mark new layers of instruments are slowly introduced, and at around 27 seconds in you can clearly see the point where the drums start playing. From there on the spectogram becomes very chaotic, as expected.
+
+### Do his albums differ in terms of high level Spotify features?
+
+```{r, echo=FALSE, results='hide', warning=FALSE, message=FALSE}
+mean_bricolage <- mean(bricolage$energy)
+mean_permutation <- mean(permutation$energy)
+mean_supermodified <- mean(supermodified$energy)
+mean_out_from_out_where <- mean(out_from_out_where$energy)
+mean_chaos_theory <- mean(chaos_theory$energy)
+mean_foley_room <- mean(foley_room$energy)
+mean_isam <- mean(isam$energy)
+mean_sydney <- mean(sydney$energy)
+mean_handful_of_dust <- mean(handful_of_dust$energy)
+mean_time_to_run <- mean(time_to_run$energy)
+mean_long_stories <- mean(long_stories$energy)
+mean_fight <- mean(fight$energy)
+mean_world_as_we_know <- mean(world_as_we_know$energy)
+
+corpus <- corpus %>%
+  group_by(album_name) %>%
+  mutate(mean_energy = mean(energy)) %>%
+  mutate(mean_valence = mean(valence)) %>%
+  mutate(mean_danceability = mean(danceability)) %>%
+  mutate(mean_acousticness = mean(acousticness))
+
+
+plot <- ggplot(corpus, aes(x=mean_valence, y=mean_energy)) + geom_text(aes(label=album_name, color=mean_danceability), size=3) + theme_classic() + ggtitle("Mean Valence and Energy of all albums") +xlim(-0.2, 0.7) +ylim(0.33, 0.85)
+```
+
+```{r}
+ggplotly(plot)
+```
+
+
+***
+Here you can see there are clear differences between albums. There is also an interesting relationship between energy, valence and danceability, namely albums with high valence tend to have high energy as well as high danceability. Another thing to note is that Amon Tobin's albums are relatively low in valence, while energy seems to vary much more. Mouse over the plot to see the specific values.
+
+### Taking a look at 'Toys' through cepstrograms
+
+#### Cepstrogram of 'Toys' based on sections
 
 ```{r}
 toys <-
@@ -51,11 +387,11 @@ toys %>%
   geom_tile() +
   labs(x = "Time (s)", y = NULL, fill = "Magnitude") +
   scale_fill_viridis_c() +                              
-  theme_classic() + labs(title="Cepstogram of 'Toys' based on sections")
+  theme_classic()
 ```
 
 
-### New graphs
+#### Cepstogram of 'Toys' based on beats
 
 ```{r}
 toys <-
@@ -91,15 +427,13 @@ toys %>%
   geom_tile() +
   labs(x = "Time (s)", y = NULL, fill = "Magnitude") +
   scale_fill_viridis_c() +                              
-  theme_classic() + labs(title="Cepstogram of 'Toys' based on beats")
+  theme_classic()
 ```
-
-
 
 ***
 These are cepstograms of a typical Amon Tobin track called "Toys". As you can see in the cepstograms, which is also very audible in the track, almost exactly halfway the track it changes in a big way. You can see that because the first half the third coefficient is most present, while in the second half the second coefficient is mostly present.
 
-### New graphs
+### SSM of the track 'Reanimator'
 
 ```{r}
 reanimator <-
@@ -144,158 +478,9 @@ reanimator %>%
 ***
 This is a self-similarity matrix for timbre of the track 'Reanimator'. There are dark patches here and there which indicate similar timbre throughout the track. Interesting points are the yellow line at around 185 seconds which indicates the moment the heavy drums kick in and the cluster of yellow lines at around 250 seconds which indicate a transitional moment in the track.
 
-### Introduction and pre-analysis of the corpus
-The corpus I'm going to be inspecting is a collection of all albums from the electronic artist Amon Tobin. I chose this artist because he has produced a lot of different albums, ranging from dreamy ambient music (Fear in a Handful of Dust) to very intense beats (Fight! Fight! Fight!). There are interesting comparisons to be made in this corpus. Because his earliest album is from 1997, which is a relatively early year for electronic music, the change in music over time is an obvious comparison to make. Because the corpus consists of only albums, it is also interesting to see how and if albums differ, especially very similar albums like *Fear in a Handful of Dust* and  *Long Stories*. I expect to find a lot of differences between the ambient albums and the heavier electronic albums, and I expect certain albums to be very difficult to differentiate. A strength of the corpus is that most of the music of Amon Tobin is represented in these albums. A weakness might be that certain albums might be too similar to find any meaningful differences. If expect *Fear in a Handful of Dust* and  *Long Stories* to be too similar because they both use long dreamy chords and melodies without using drums, which might be difficult for Spotify to differentiate. An atypical track for this corpus might be ‘New York Editor’, for its jazzy drums and basslines.
 
-***
-Full albums used in the corpus:  
-Bricolage (1997)  
-Permutation (1998)  
-Supermodified (2000)  
-Out From Out Where (2002)  
-Chaos Theory (2005)  
-Foley Room (2007)  
-ISAM (2011)  
-Electronic Music for the Sydney Opera House (2017)  
-Fear in a Handful of Dust (2019)  
-Time To Run (2019)  
-Long Stories (2019)  
-Fight! Fight! Fight! (2020)  
-The World As We Know It (2020)  
+### test
 
-
-
-```{r, echo=FALSE, results='hide', warning=FALSE, message=FALSE}
-amon_tobin <- get_artist_audio_features("3mvkWMe6swnknwscwvGCHO", include_groups = "album", dedupe_albums = TRUE)
-bricolage <- amon_tobin %>% filter(album_name == "Bricolage")
-permutation <- amon_tobin %>% filter(album_name == "Permutation")
-supermodified <- amon_tobin %>% filter(album_name == "Supermodified")
-out_from_out_where <- amon_tobin %>% filter(album_name == "Out from Out Where")
-chaos_theory <- amon_tobin %>% filter(album_name == "Chaos Theory")
-foley_room <- amon_tobin %>% filter(album_name == "Foley Room")
-isam <- amon_tobin %>% filter(album_name == "ISAM")
-sydney <- amon_tobin %>% filter(album_name == "Electronic Music for the Sydney Opera House")
-handful_of_dust <- amon_tobin %>% filter(album_name == "Fear in a Handful of Dust")
-time_to_run <- amon_tobin %>% filter(album_name == "Time To Run")
-long_stories <- amon_tobin %>% filter(album_name == "Long Stories")
-fight <- amon_tobin %>% filter(album_name == "Fight! Fight! Fight!")
-world_as_we_know <- amon_tobin %>% filter(album_name == "The World As We Know It")
-
-corpus <- amon_tobin %>%
-    filter(album_name != "Dark Jovian") %>%
-    filter(album_name != "Chaos Theory (Remixed) [The Soundtrack to Splinter Cell 3D]") %>%
-    filter(album_name != "inFAMOUS (Original Game Soundtrack)") %>%
-    filter(album_name != "Verbal Remixes & Collaborations")
-```
-
-### Are there even large differences in Amon Tobin's tracks?
-
-```{r, echo=FALSE, results='hide', warning=FALSE, message=FALSE}
-plot1 <- ggplot(corpus, aes(x=acousticness,y=energy, color=valence, label=track_name)) + geom_point(alpha=0.5) + geom_smooth() +ggtitle("Acousticness and Energy distribution of all tracks")
-```
-```{r}
-ggplotly(plot1)
-```
-
-
-***
-Here we see a lot of Amon Tobin's tracks are high in energy and low in acousticness.
-An interesting find though is that the more acoustic tracks tend to be less energetic than the less acoustic tracks according to Spotify, which is odd since acoustic albums like *Time To Run* feel much more energetic than mainly electronic albums like *Fear in a Handful of Dust*. Valence seems to be about evenly spread, but the few tracks with the lowest valence tend to have very low acousticness.
-
-### A spectogram analysis of the outlier track "Big Furry Head"
-
-```{r}
-big_furry_head <-
-  get_tidy_audio_analysis("1NOIIbDFL2xRlUxZQ91V8W") %>%
-  select(segments) %>%
-  unnest(segments) %>%
-  select(start, duration, pitches)
-
-big_furry_head %>%
-  mutate(pitches = map(pitches, compmus_normalise, "euclidean")) %>%
-  compmus_gather_chroma() %>% 
-  ggplot(
-    aes(
-      x = start + duration / 2,
-      width = duration,
-      y = pitch_class,
-      fill = value
-    )
-  ) +
-  geom_tile() +
-  labs(x = "Time (s)", y = NULL, fill = "Magnitude") +
-  theme_minimal() +
-  scale_fill_viridis_c() + labs(title="Spectogram of 'Big Furry Head'")
-```
-
-***
-Here you see the spectogram of the track 'Big Furry Head'. This track was an outlier because it has high energy while being somewhere in the middle on acousticness (see the previous page). The spectogram does not immediately show any inconsistensies. It is interesting that you can cleary see that the majority of the track involves percussion except for the beginning and end, because percussive instruments produce noise which consists of many different frequencies. The next page shows a closer look to see the difference in bits with percussion and without.
-
-###  The first 50 seconds of 'Big Furry Head' shows the difference percussion makes
-
-```{r}
-big_furry_head %>%
-  mutate(pitches = map(pitches, compmus_normalise, "euclidean")) %>%
-  compmus_gather_chroma() %>% 
-  ggplot(
-    aes(
-      x = start + duration / 2,
-      width = duration,
-      y = pitch_class,
-      fill = value
-    )
-  ) +
-  geom_tile() +
-  labs(x = "Time (s)", y = NULL, fill = "Magnitude") +
-  theme_minimal() +
-  scale_fill_viridis_c() + xlim(0, 50) + labs(title="First 50 seconds of 'Big Furry Head'")
-```
-
-***
-The first half of this clip shows very distinct notes in the spectogram. Interesting is how it interprets a portamento from B to Bb around the 4 second mark. At the 13 second mark new layers of instruments are slowly introduced, and at around 27 seconds in you can clearly see the point where the drums start playing. From there on the spectogram becomes very chaotic, as expected.
-
-### Do his albums differ in terms of high level Spotify features?
-
-```{r, echo=FALSE, results='hide', warning=FALSE, message=FALSE}
-mean_bricolage <- mean(bricolage$energy)
-mean_permutation <- mean(permutation$energy)
-mean_supermodified <- mean(supermodified$energy)
-mean_out_from_out_where <- mean(out_from_out_where$energy)
-mean_chaos_theory <- mean(chaos_theory$energy)
-mean_foley_room <- mean(foley_room$energy)
-mean_isam <- mean(isam$energy)
-mean_sydney <- mean(sydney$energy)
-mean_handful_of_dust <- mean(handful_of_dust$energy)
-mean_time_to_run <- mean(time_to_run$energy)
-mean_long_stories <- mean(long_stories$energy)
-mean_fight <- mean(fight$energy)
-mean_world_as_we_know <- mean(world_as_we_know$energy)
-
-corpus <- corpus %>%
-  group_by(album_name) %>%
-  mutate(mean_energy = mean(energy)) %>%
-  mutate(mean_valence = mean(valence)) %>%
-  mutate(mean_danceability = mean(danceability)) %>%
-  mutate(mean_acousticness = mean(acousticness))
-
-
-plot <- ggplot(corpus, aes(x=mean_valence, y=mean_energy)) + geom_text(aes(label=album_name, color=mean_danceability), size=3) + theme_classic() + ggtitle("Mean Valence and Energy of all albums") +xlim(-0.2, 0.7) +ylim(0.33, 0.85)
-```
-
-```{r}
-ggplotly(plot)
-```
-
-
-***
-Here you can see there are clear differences between albums. There is also an interesting relationship between energy, valence and danceability, namely albums with high valence tend to have high energy as well as high danceability. Another thing to note is that Amon Tobin's albums are relatively low in valence, while energy seems to vary much more. Mouse over the plot to see the specific values.
-
-
-### Ignore the graphs below
-
-```{r, echo=FALSE, results='hide', warning=FALSE}
-ggplot(corpus, aes(x=album_name, y=danceability)) + geom_boxplot() + theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1))
-```
 ```{r, echo=FALSE}
 corpus <- corpus %>%
   group_by(track_number) %>%
@@ -305,5 +490,7 @@ ggplot(corpus, aes(x=track_number, y=danceability_by_track_number)) + geom_line(
 
 ggplot(corpus, aes(x=track_number,group=track_number,y=liveness)) + geom_boxplot()
 ```
+
+
 
 
