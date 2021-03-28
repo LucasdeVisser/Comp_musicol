@@ -44,30 +44,6 @@ corpus <- mutate(corpus, track_name = tolower(track_name))
 corpus <- distinct(corpus, track_name, .keep_all= TRUE)
 ```
 
-### *NEW* Can a random forest algorithm distinguish between albums?
-
-```{r, fig.height = 8, fig.width = 10}
-train <- sample(nrow(corpus), 0.7*nrow(corpus), replace = FALSE)
-trainset <- corpus[train,]
-testset <- corpus[-train,]
-
-forest <- randomForest(factor(album_name) ~ danceability + energy + key + loudness + mode + speechiness + acousticness + instrumentalness + liveness + valence + tempo, data=trainset)
-forest <- as.data.frame(forest$confusion)
-forest$class.error <- NULL
-dt2 <- forest %>%
-  rownames_to_column() %>%
-  gather(colname, value, -rowname)
-
-dt2 <- dt2 %>%
-  mutate(value = value/14)
-ggplot(dt2, aes(x=rowname, y=colname, fill=value)) + geom_tile() + theme_classic() + theme(axis.text.x = element_text(angle = 45, hjust=1), axis.title.y = element_text(vjust = 3), axis.title.x = element_text(vjust=15)) + labs(x="Actual albums", y="Predicted albums", fill= "Percentage predicted", title="Predicting the album for each track") + scale_fill_gradient(low='#ffffff', high='#0000ff')
-```
-
-***
-One of the biggest question I had about my corpus is: Are albums actually distinguishable? To answer this question, I used a random forest algorithm to predict for each track to which album it belongs. In this graph you can see the result of this process.
-Along the x-axis you see the the actual albums. If you look for example at the first album 'Bricolage', you can look across the y-axis to see which albums are predicted the most for tracks from this album. In the case of 'Bricolage' the algorithm could correctly predict about half of the tracks, but this is not the case with every album. It is interesting for example that the algorithm flips the two albums 'Fear in a Handful of Dust' and 'Long Stories', and listening to them you hear that indeed they are very similar.
-Overall you can conclude that the algorithm does not do very well except for a few exceptions. This may be because the sample size is very small and therefore there are lots of options for overfitting or underfitting.
-
 ### Introduction and pre-analysis of the corpus
 The corpus I'm going to be inspecting is a collection of all albums from the electronic artist Amon Tobin. I chose this artist because he has produced a lot of different albums, ranging from dreamy ambient music (Fear in a Handful of Dust) to very intense beats (Fight! Fight! Fight!). There are interesting comparisons to be made in this corpus. Because his earliest album is from 1997, which is a relatively early year for electronic music, the change in music over time is an obvious comparison to make. Because the corpus consists of only albums, it is also interesting to see how and if albums differ, especially very similar albums like *Fear in a Handful of Dust* and  *Long Stories*. I expect to find a lot of differences between the ambient albums and the heavier electronic albums, and I expect certain albums to be very difficult to differentiate. A strength of the corpus is that most of the music of Amon Tobin is represented in these albums. A weakness might be that certain albums might be too similar to find any meaningful differences. If expect *Fear in a Handful of Dust* and  *Long Stories* to be too similar because they both use long dreamy chords and melodies without using drums, which might be difficult for Spotify to differentiate. An atypical track for this corpus might be ‘New York Editor’, for its jazzy drums and basslines.
 
@@ -90,6 +66,7 @@ The World As We Know It (2020)
 
 ### Are there even large differences in Amon Tobin's tracks?
 
+
 ```{r, echo=FALSE, results='hide', warning=FALSE, message=FALSE}
 plot1 <- ggplot(corpus, aes(x=acousticness,y=energy, color=valence, label=track_name)) + geom_point(alpha=0.5) + geom_smooth() +ggtitle("Acousticness and Energy distribution of all tracks")
 ```
@@ -97,32 +74,10 @@ plot1 <- ggplot(corpus, aes(x=acousticness,y=energy, color=valence, label=track_
 ggplotly(plot1)
 ```
 
-
 ***
 Here we see a lot of Amon Tobin's tracks are high in energy and low in acousticness.
 An interesting find though is that the more acoustic tracks tend to be less energetic than the less acoustic tracks according to Spotify, which is odd since acoustic albums like *Time To Run* feel much more energetic than mainly electronic albums like *Fear in a Handful of Dust*. Valence seems to be about evenly spread, but the few tracks with the lowest valence tend to have very low acousticness.
 
-### Are there clear tempo differences between albums?
-
-#### Mean tempos between albums
-```{r}
-corpus %>%
-  group_by(album_name) %>%
-  mutate(mean_tempo = mean(tempo)) %>%
-  mutate(mean_energy = mean(energy)) %>%
-  ggplot(aes(x=mean_tempo, y=mean_energy)) + geom_text(aes(label=album_name, color=album_release_year),size=3) +xlim(65, 175) +scale_color_gradient(low='#00ff00', high='#0000ff') +theme_classic()
-```
-
-#### Tempo distribution of all tracks
-
-```{r}
-corpus %>%
-  ggplot(aes(x=tempo)) + geom_histogram(fill='red', alpha=0.2) +theme_classic() +geom_density(aes(y=..count..*10, color='red'), size=1) + theme(legend.position = "none", axis.ticks.y = element_blank())
-```
-
-***
-In the first graph you can see tempo and energy means of all Amon Tobin albums. As you expect tempo and energy seem to be correlated, as the higher the tempo the higher the energy level seems to be. You can also see that his earlier albums are clustered around 125 BPM with a high energy, whereas his later albums are much more spread out both for tempo and energy.
-But the first plot only shows the means of the albums, we also want to know the general distribution of all tracks for tempo. The second plot shows just that. As you can see by the line, all of Amon Tobin's music is distribution between two general tempi. Here you can also see that most tracks have a BPM of around 160-170, whereas the first graph shows that the highest mean tempo is for 'Bricolage' which is only around 155 BPM. This indicates that in albums there are tracks with a significantly lower tempo which bring down the mean.
 
 ### A spectogram analysis of the outlier track "Big Furry Head"
 
@@ -152,6 +107,7 @@ big_furry_head %>%
   scale_fill_viridis_c() + labs(title="Spectogram of 'Big Furry Head'")
 ```
 
+
 ####  The first 50 seconds of 'Big Furry Head' shows the difference percussion makes
 
 ```{r}
@@ -176,6 +132,28 @@ big_furry_head %>%
 Here you see the spectogram of the track 'Big Furry Head'. This track was an outlier because it has high energy while being somewhere in the middle on acousticness (see the previous page). The spectogram does not immediately show any inconsistensies. It is interesting that you can cleary see that the majority of the track involves percussion except for the beginning and end, because percussive instruments produce noise which consists of many different frequencies. The next page shows a closer look to see the difference in bits with percussion and without.
 
 The first half of this clip shows very distinct notes in the spectogram. Interesting is how it interprets a portamento from B to Bb around the 4 second mark. At the 13 second mark new layers of instruments are slowly introduced, and at around 27 seconds in you can clearly see the point where the drums start playing. From there on the spectogram becomes very chaotic, as expected.
+
+### Are there clear tempo differences between albums?
+
+#### Mean tempos between albums
+```{r}
+corpus %>%
+  group_by(album_name) %>%
+  mutate(mean_tempo = mean(tempo)) %>%
+  mutate(mean_energy = mean(energy)) %>%
+  ggplot(aes(x=mean_tempo, y=mean_energy)) + geom_text(aes(label=album_name, color=album_release_year),size=3) +xlim(65, 175) +scale_color_gradient(low='#ff6363', high='#0000ff') +theme_classic()
+```
+
+#### Tempo distribution of all tracks
+
+```{r}
+corpus %>%
+  ggplot(aes(x=tempo)) + geom_histogram(fill='red', alpha=0.2) +theme_classic() +geom_density(aes(y=..count..*10, color='red'), size=1) + theme(legend.position = "none", axis.ticks.y = element_blank())
+``` 
+
+***
+In the first graph you can see tempo and energy means of all Amon Tobin albums. As you expect tempo and energy seem to be correlated, as the higher the tempo the higher the energy level seems to be. You can also see that his earlier albums are clustered around 125 BPM with a high energy, whereas his later albums are much more spread out both for tempo and energy.
+But the first plot only shows the means of the albums, we also want to know the general distribution of all tracks for tempo. The second plot shows just that. As you can see by the line, all of Amon Tobin's music is distribution between two general tempi. Here you can also see that most tracks have a BPM of around 160-170, whereas the first graph shows that the highest mean tempo is for 'Bricolage' which is only around 155 BPM. This indicates that in albums there are tracks with a significantly lower tempo which bring down the mean.
 
 ### Do his albums differ in terms of high level Spotify features?
 
@@ -209,138 +187,8 @@ plot <- ggplot(corpus, aes(x=mean_valence, y=mean_energy)) + geom_text(aes(label
 ggplotly(plot)
 ```
 
-
 ***
 Here you can see there are clear differences between albums. There is also an interesting relationship between energy, valence and danceability, namely albums with high valence tend to have high energy as well as high danceability. Another thing to note is that Amon Tobin's albums are relatively low in valence, while energy seems to vary much more. Mouse over the plot to see the specific values.
-
-### Taking a look at 'Toys' through cepstrograms
-
-#### Cepstrogram of 'Toys' based on sections
-
-```{r, cache=TRUE}
-toys <-
-  get_tidy_audio_analysis("6DkRA7SFuraU8wlChIDt9c") %>% # Change URI.
-  compmus_align(sections, segments) %>%                     # Change `bars`
-  select(sections) %>%                                      #   in all three
-  unnest(sections) %>%                                      #   of these lines.
-  mutate(
-    pitches =
-      map(segments,
-        compmus_summarise, pitches,
-        method = "rms", norm = "euclidean"              # Change summary & norm.
-      )
-  ) %>%
-  mutate(
-    timbre =
-      map(segments,
-        compmus_summarise, timbre,
-        method = "rms", norm = "euclidean"              # Change summary & norm.
-      )
-  )
-
-toys %>%
-  compmus_gather_timbre() %>%
-  ggplot(
-    aes(
-      x = start + duration / 2,
-      width = duration,
-      y = basis,
-      fill = value
-    )
-  ) +
-  geom_tile() +
-  labs(x = "Time (s)", y = NULL, fill = "Magnitude") +
-  scale_fill_viridis_c() +                              
-  theme_classic()
-```
-
-
-#### Cepstogram of 'Toys' based on beats
-
-```{r, cache=TRUE}
-toys <-
-  get_tidy_audio_analysis("6DkRA7SFuraU8wlChIDt9c") %>% # Change URI.
-  compmus_align(beats, segments) %>%                     # Change `bars`
-  select(beats) %>%                                      #   in all three
-  unnest(beats) %>%                                      #   of these lines.
-  mutate(
-    pitches =
-      map(segments,
-        compmus_summarise, pitches,
-        method = "rms", norm = "euclidean"              # Change summary & norm.
-      )
-  ) %>%
-  mutate(
-    timbre =
-      map(segments,
-        compmus_summarise, timbre,
-        method = "rms", norm = "euclidean"              # Change summary & norm.
-      )
-  )
-
-toys %>%
-  compmus_gather_timbre() %>%
-  ggplot(
-    aes(
-      x = start + duration / 2,
-      width = duration,
-      y = basis,
-      fill = value
-    )
-  ) +
-  geom_tile() +
-  labs(x = "Time (s)", y = NULL, fill = "Magnitude") +
-  scale_fill_viridis_c() +                              
-  theme_classic()
-```
-
-***
-These are cepstograms of a typical Amon Tobin track called "Toys". As you can see in the cepstograms, which is also very audible in the track, almost exactly halfway the track it changes in a big way. You can see that because the first half the third coefficient is most present, while in the second half the second coefficient is mostly present.
-
-### SSM of the track 'Reanimator'
-
-```{r, cache=TRUE}
-reanimator <-
-  get_tidy_audio_analysis("3IIRFqcAthIwk670PebTgZ") %>% # Change URI.
-  compmus_align(bars, segments) %>%                     # Change `bars`
-  select(bars) %>%                                      #   in all three
-  unnest(bars) %>%                                      #   of these lines.
-  mutate(
-    pitches =
-      map(segments,
-        compmus_summarise, pitches,
-        method = "rms", norm = "euclidean"              # Change summary & norm.
-      )
-  ) %>%
-  mutate(
-    timbre =
-      map(segments,
-        compmus_summarise, timbre,
-        method = "rms", norm = "euclidean"              # Change summary & norm.
-      )
-  )
-
-reanimator %>%
-  compmus_self_similarity(timbre, "cosine") %>% 
-  ggplot(
-    aes(
-      x = xstart + xduration / 2,
-      width = xduration,
-      y = ystart + yduration / 2,
-      height = yduration,
-      fill = d
-    )
-  ) +
-  geom_tile() +
-  coord_fixed() +
-  scale_fill_viridis_c(guide = "none") +
-  theme_classic() +
-  labs(x = "", y = "", title="SSM based on timbre of the track 'Reanimator'")
-
-```
-
-***
-This is a self-similarity matrix for timbre of the track 'Reanimator', since this track is a very typical track of Amon Tobin according to the Spotify features. There are dark patches here and there which indicate similar timbre throughout the track. Interesting points are the yellow line at around 185 seconds which indicates the moment the heavy drums kick in and the cluster of yellow lines at around 250 seconds which indicate a transitional moment in the track.
 
 ### tempo and loudness of albums in chronological order
 
@@ -522,6 +370,37 @@ snack %>%
   labs(x = "Time (s)", y = "Key")
 ```
 
-
 ***
 These are two tracks from before 2007 which Spotify labeled as C# minor. As you can see, while the harmonic structure of both tracks are very much visible looking at vertical lines, the keygrams do not settle on one key for both tracks. If you listen to the tracks, you can hear that they do not rely on harmony too much. You can make out melody and a chord here and there, but rhythm takes center stage in these tracks. I do not know why Spotify labels both these tracks (and other aharmonic tracks from the same album) as being in C# minor. I would even say that 'Slowly' is more suited in B major, as throughout the track you constantly hear an F# followed by a B chord. That corresponds to V-I if the track is in B major, which makes it very musically suitable for B major.
+
+### Can a random forest algorithm distinguish between albums?
+
+```{r, fig.height = 8, fig.width = 10}
+train <- sample(nrow(corpus), 0.7*nrow(corpus), replace = FALSE)
+trainset <- corpus[train,]
+testset <- corpus[-train,]
+
+forest <- randomForest(factor(album_name) ~ danceability + energy + key + loudness + mode + speechiness + acousticness + instrumentalness + liveness + valence + tempo, data=trainset)
+forest <- as.data.frame(forest$confusion)
+forest$class.error <- NULL
+dt2 <- forest %>%
+  rownames_to_column() %>%
+  gather(colname, value, -rowname)
+
+dt2 <- dt2 %>%
+  mutate(value = value/14)
+ggplot(dt2, aes(x=rowname, y=colname, fill=value)) + geom_tile() + theme_classic() + theme(axis.text.x = element_text(angle = 45, hjust=1), axis.title.y = element_text(vjust = 3), axis.title.x = element_text(vjust=15)) + labs(x="Actual albums", y="Predicted albums", fill= "Percentage predicted", title="Predicting the album for each track") + scale_fill_gradient(low='#ffffff', high='#0000ff')
+```
+
+***
+One of the biggest question I had about my corpus is: Are albums actually distinguishable? To answer this question, I used a random forest algorithm to predict for each track to which album it belongs. In this graph you can see the result of this process.
+Along the x-axis you see the the actual albums. If you look for example at the first album 'Bricolage', you can look across the y-axis to see which albums are predicted the most for tracks from this album. In the case of 'Bricolage' the algorithm could correctly predict about half of the tracks, but this is not the case with every album. It is interesting for example that the algorithm flips the two albums 'Fear in a Handful of Dust' and 'Long Stories', and listening to them you hear that indeed they are very similar.
+Overall you can conclude that the algorithm does not do very well except for a few exceptions. This may be because the sample size is very small and therefore there are lots of options for overfitting or underfitting.
+
+### Conclusions
+
+In this portfolio I wanted to see if the albums of Amon Tobin were distinguishable from each other and if there were any noticeable trends of his music through the years.
+First the first question. His albums show clear differences if you plot out the means of different musical characteristics, as each album is placed differently on the valence vs energy and the tempo vs energy plots. Although this is the case, if you pick a random track from his corpus it is very difficult to determine from which album it is. With some exceptions this means that his albums are indeed different from each other, but some tracks may fit well in multiple albums.
+Lastly the second question. There are indeed differences to be found in his music if you compare early to late tracks. If you look at tempo for example, you can see gradual change over the years. But even harmonics show differences if you split the tracks into tracks made before and after 2007.
+
+In conclusion, although individual tracks are hard to pinpoint to a specific album, the albums of Amon Tobin indeed show noticeable differences from each other and his music has also changed greatly over the years. This portfolio has helped to show those differences.
